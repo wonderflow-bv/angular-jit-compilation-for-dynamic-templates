@@ -6,23 +6,93 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 
 Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The app will automatically reload if you change any of the source files.
 
-## Code scaffolding
+## JIT Compilation of a dynamic template
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|module`.
+### Usage
 
-## Build
+- `ng serve`
+- open http://localhost:8080
+- put in input <app-simple-component></app-simple-component>world<app-simple-component></app-simple-component>
+- push *Render* button
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory. Use the `-prod` flag for a production build.
+## Original article
 
-## Running unit tests
+- either (blog) from https://hackernoon.com/here-is-what-you-need-to-know-about-dynamic-components-in-angular-ac1e96167f9e
+- either (code) https://github.com/maximusk/Here-is-what-you-need-to-know-about-dynamic-components-in-Angular/blob/master/app/on-the-fly/a.component.ts
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
 
-## Running end-to-end tests
+### Code
 
-Run `ng e2e` to execute the end-to-end tests via [Protractor](http://www.protractortest.org/).
-Before running the tests make sure you are serving the app via `ng serve`.
+```javascript
+import { Component, OnInit, Compiler, Injector, NgModuleRef, NgModule, ViewContainerRef, ViewChild, Input, ComponentRef } from '@angular/core';
+import { SimpleComponentComponent } from '../simple-component/simple-component.component';
+import { MyCommonModule } from '../../my-common/my-common.module';
 
-## Further help
+@Component({
+  selector: 'app-dynamic-component-2',
+  templateUrl: './dynamic-component-2.component.html',
+  styleUrls: ['./dynamic-component-2.component.css']
+})
+export class DynamicComponent2Component implements OnInit {
+  @Input() myInput: any;
+  @ViewChild('vc', { read: ViewContainerRef }) _container: ViewContainerRef;
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI README](https://github.com/angular/angular-cli/blob/master/README.md).
+  cmpRef: ComponentRef<any>;
+
+  constructor(private _compiler: Compiler,
+    private _injector: Injector,
+    private _m: NgModuleRef<any>) { }
+
+  ngOnInit() {
+    this.myInput = {
+      textForTemplate: 'Input'
+    };
+
+  }
+
+  ngAfterViewInit() { }
+
+
+  onChange() {
+    alert(this.myInput.textForTemplate);
+    let template = this.myInput.textForTemplate;
+
+    if (this.cmpRef) {
+      this.cmpRef.destroy();
+    }
+    this.renderTemplate(template);
+  }
+
+
+  renderTemplate(template) {
+    const tmpModule = this.getModuleByTemplate(template);
+    this.compileModule(tmpModule);
+  }
+
+  compileModule(tmpModule) {
+    this._compiler.compileModuleAndAllComponentsAsync(tmpModule)
+      .then((factories) => {
+        const f = factories.componentFactories[1]; // this should be find by selector of the component, otherwise we might pick up the wrong componentFactory. in case the selector must be declared inside the component inside the module
+        this.cmpRef = f.create(this._injector, [], null, this._m);
+        this.cmpRef.instance.name = 'B component';
+        this._container.insert(this.cmpRef.hostView);
+      })
+  }
+
+  getModuleByTemplate(template) {
+    const tmpCmp = Component({
+      template: template
+    })(class { });
+
+    const tmpModule = NgModule({
+      declarations: [tmpCmp],
+      imports: [MyCommonModule]
+    })(class { });
+    return tmpModule;
+  }
+
+
+}
+
+```
+
