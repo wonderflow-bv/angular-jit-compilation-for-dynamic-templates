@@ -1,4 +1,9 @@
 <p>
   simple-component works!
-  <button (click)="pushButton()">Ok</button>
+  <button (click)="pushButton()">Add todo</button>
+
+
 </p>
+<ul>
+  <li *ngFor="let todo of (todos|async).data">{{todo.text}}</li>
+</ul>
